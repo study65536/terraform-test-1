@@ -1,0 +1,7 @@
+# Replace ORG and the visible team slugs with actual teams having write access.
+*                    @ORG/cloud-platform
+/catalog/            @ORG/cloud-governance
+/platform/           @ORG/cloud-governance
+/service-template/   @ORG/cloud-platform
+/governance-template/ @ORG/cloud-governance
+/.github/            @ORG/cloud-governance

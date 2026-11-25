@@ -1,0 +1,8 @@
+# Activate as .github/CODEOWNERS after replacing ORG and team names.
+*                     @ORG/cloud-platform
+/catalog/             @ORG/cloud-governance
+/platform/            @ORG/cloud-governance
+/governance-template/ @ORG/cloud-governance
+/modules/             @ORG/cloud-platform
+/stacks/              @ORG/cloud-platform
+/.github/             @ORG/cloud-platform

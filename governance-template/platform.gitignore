@@ -1,0 +1,4 @@
+# 비공개 거버넌스 저장소에 발행한 뒤 PR에서 검토할 OU·그룹 할당만 허용합니다.
+!/control-tower/governance.auto.tfvars.json
+!/scp/governance.auto.tfvars.json
+!/iam/governance.auto.tfvars.json

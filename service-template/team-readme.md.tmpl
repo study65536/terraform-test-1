@@ -1,0 +1,48 @@
+# @DOMAIN@ 도메인 인프라
+
+`domain.json`에 기록된 팀이 이 저장소의 서비스들을 운영합니다. `services/<서비스>/<환경>/`마다 하나의 Terraform 실행 루트가 있습니다. 같은 AWS 계정에서 실행하는 서비스도 S3 상태 키와 잠금 파일은 각각 사용합니다.
+
+## 환경 하나의 계획 보기
+
+아래는 결제 개발 환경 예시입니다. 해당 서비스·환경으로 경로와 AWS 프로필을 교체합니다.
+
+```bash
+service=01_PAYMENTS
+environment=dev
+export AWS_PROFILE=payments-dev
+aws sso login --profile "$AWS_PROFILE"
+aws sts get-caller-identity
+python3 scripts/check-roots.py
+python3 scripts/init-workload.py "$service" "$environment"
+terraform -chdir="services/$service/$environment" plan -out=review.tfplan
+terraform -chdir="services/$service/$environment" show review.tfplan
+```
+
+팀이 관리하는 서비스 설정은 `workload.json`, 중앙에서 배정받은 계정·소유자·네트워크 정보는 같은 루트의 `account.json`에 있습니다. 배포 역할은 이 환경의 상태와 필요한 리소스에만 접근하도록 구성합니다. 같은 계정에서 여러 서비스가 역할을 달리 쓰는 경우 AWS IAM 정책에서 허용 동작과 범위를 지정합니다. `allowed_account_ids`는 계정 일치만 확인합니다.
+
+네트워크 소유 서비스의 환경 루트가 VPC를 한 번 생성합니다. 같은 대상의 소비 서비스는 네트워크 소유자가 배포한 뒤 실행합니다. 공유 EKS를 사용하는 경우 `shared_eks_cluster_name`으로 기존 클러스터를 지정합니다. 소비 도메인과 소유 도메인이 다르면 양쪽 팀이 소유자 변경과 소비자 재검증 일정을 조율합니다.
+
+## 변경 범위와 공통 CI
+
+PR에서 실제 변경된 서비스·환경만 포맷, 백엔드 없는 초기화, Terraform 검증을 실행합니다. 예를 들어 소유 서비스 dev의 EC2 설정을 수정하면 그 루트만 선택합니다. 소유 서비스의 VPC·EKS 설정, 계정 할당, 모듈 버전을 바꾸면 같은 도메인에서 그 대상을 공유하는 소비 루트도 검증합니다. 도메인 공통 코드나 CI 설정 변경은 전체 루트를 검증합니다. CI에서 비교하는 대상은 커밋된 변경입니다.
+
+```bash
+git fetch origin main
+python3 scripts/select-roots.py --base "$(git merge-base origin/main HEAD)"
+```
+
+팀 저장소의 호출 워크플로는 공통 GitHub Actions 워크플로의 커밋 SHA를 지정합니다. 각 서비스 환경의 Terraform 모듈 SHA는 독립적으로 갱신할 수 있습니다. 비공개 모듈 저장소에는 Contents 읽기 권한의 자격 증명을 GitHub Actions Secret `PLATFORM_MODULE_READ_TOKEN`으로 설정합니다. 조직의 비공개 공통 워크플로에는 도메인 저장소의 재사용을 허용합니다. 포크 PR에는 해당 시크릿을 전달하지 않는 GitHub 정책이 적용되므로 비공개 소스의 인증이 필요하면 신뢰한 브랜치에서 다시 실행합니다. [GitHub 재사용 워크플로](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows) · [조직 내부 워크플로 공유](https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization)
+
+기본 브랜치의 ruleset에서 워크플로의 고정 결과인 `Domain Terraform result`에 해당하는 실제 상태 검사 이름을 선택할 수 있습니다. `CODEOWNERS`의 서비스 경로와 담당 팀을 지정하고 코드 소유자의 PR 승인을 기본 브랜치에 적용합니다. 운영 배포에 GitHub Environments를 도입할 경우 대상 환경의 승인·브랜치 조건과 AWS OIDC 역할의 저장소·환경 신뢰 조건을 함께 설정합니다. [GitHub rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) · [코드 소유자](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners) · [AWS OIDC](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)
+
+### 서비스 루트를 이전하거나 종료할 때
+
+원본 apply를 멈추고 상태를 이전하거나 리소스를 종료한 변경 기록을 남깁니다. 기존 서비스의 `dev/stg/prod` 디렉터리를 제거하는 PR에는 저장소 루트의 `retired-roots.json`에 각 이전 경로와 처리한 변경 기록(이슈 또는 작업 링크)을 명시합니다. 변경 검증기가 세 루트의 삭제를 식별하고 남은 도메인 루트들을 검증합니다. 이 기록은 상태를 이동하거나 AWS 리소스를 삭제하는 명령을 수행하지 않습니다.
+
+```json
+{
+  "services/03_SETTLEMENT/dev": "migration-42",
+  "services/03_SETTLEMENT/stg": "migration-42",
+  "services/03_SETTLEMENT/prod": "migration-42"
+}
+```

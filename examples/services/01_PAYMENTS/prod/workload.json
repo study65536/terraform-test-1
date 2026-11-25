@@ -1,0 +1,8 @@
+{
+  "nat_gateway_per_az": false,
+  "enable_bucket": true,
+  "enable_registry": true,
+  "instances": {},
+  "enable_efs": false,
+  "eks": null
+}

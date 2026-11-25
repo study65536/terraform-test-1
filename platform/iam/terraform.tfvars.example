@@ -1,0 +1,12 @@
+# Identity Center 위임 관리자 계정과 Identity Center 리전
+admin_account_id = "000000000000"
+region           = "ap-northeast-2"
+instance_arn     = "arn:aws:sso:::instance/ssoins-0000000000000000"
+
+# 그룹 미지정 시 권한 세트 정의만 생성합니다.
+inventory_readers = []
+# inventory_readers = [{
+#   service     = "01_PAYMENTS"
+#   environment = "dev"
+#   group_id    = "00000000-0000-0000-0000-000000000000"
+# }]

@@ -1,0 +1,12 @@
+name: Domain Terraform checks
+on: [push, pull_request, merge_group, workflow_dispatch]
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    uses: '@CI_REPO@/.github/workflows/reusable-domain.yml@@CI_REF@'
+    with:
+      module_repo: '@MODULE_REPO@'
+    secrets:
+      module_read_token: ${{ secrets.PLATFORM_MODULE_READ_TOKEN }}

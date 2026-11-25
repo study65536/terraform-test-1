@@ -1,0 +1,28 @@
+name: Terraform library
+on: [push, pull_request]
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      - name: Validate modules and mocked plans
+        shell: bash
+        run: |
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/tf-providers"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          for root in modules/terraform-aws-* stacks/workload; do
+            cp .terraform.lock.hcl "$root/.terraform.lock.hcl"
+            terraform -chdir="$root" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$root" validate
+          done
+          terraform -chdir=stacks/workload test

@@ -1,0 +1,130 @@
+{
+  "domains": {
+    "payments": {
+      "owner": "team-payments"
+    },
+    "orders": {
+      "owner": "team-orders"
+    }
+  },
+  "accounts": {
+    "111111111101": {
+      "name": "payments-dev",
+      "assignment_key": "01_PAYMENTS/dev"
+    },
+    "111111111102": {
+      "name": "payments-stg",
+      "assignment_key": "01_PAYMENTS/stg"
+    },
+    "111111111103": {
+      "name": "payments-prod",
+      "assignment_key": "01_PAYMENTS/prod"
+    },
+    "222222222201": {
+      "name": "orders-dev",
+      "assignment_key": "02_ORDERS/dev"
+    },
+    "222222222202": {
+      "name": "orders-stg",
+      "assignment_key": "02_ORDERS/stg"
+    },
+    "222222222203": {
+      "name": "orders-prod",
+      "assignment_key": "02_ORDERS/prod"
+    }
+  },
+  "targets": {
+    "payments-dev": {
+      "account_id": "111111111101",
+      "region": "ap-northeast-2",
+      "vpc_cidr": "10.10.0.0/20",
+      "availability_zones": [
+        "ap-northeast-2a",
+        "ap-northeast-2c"
+      ],
+      "environment": "dev",
+      "network_owner": "01_PAYMENTS"
+    },
+    "payments-stg": {
+      "account_id": "111111111102",
+      "region": "ap-northeast-2",
+      "vpc_cidr": "10.11.0.0/20",
+      "availability_zones": [
+        "ap-northeast-2a",
+        "ap-northeast-2c"
+      ],
+      "environment": "stg",
+      "network_owner": "01_PAYMENTS"
+    },
+    "payments-prod": {
+      "account_id": "111111111103",
+      "region": "ap-northeast-2",
+      "vpc_cidr": "10.12.0.0/20",
+      "availability_zones": [
+        "ap-northeast-2a",
+        "ap-northeast-2c"
+      ],
+      "environment": "prod",
+      "network_owner": "01_PAYMENTS"
+    },
+    "orders-dev": {
+      "account_id": "222222222201",
+      "region": "ap-northeast-2",
+      "vpc_cidr": "10.20.0.0/20",
+      "availability_zones": [
+        "ap-northeast-2a",
+        "ap-northeast-2c"
+      ],
+      "environment": "dev",
+      "network_owner": "02_ORDERS"
+    },
+    "orders-stg": {
+      "account_id": "222222222202",
+      "region": "ap-northeast-2",
+      "vpc_cidr": "10.21.0.0/20",
+      "availability_zones": [
+        "ap-northeast-2a",
+        "ap-northeast-2c"
+      ],
+      "environment": "stg",
+      "network_owner": "02_ORDERS"
+    },
+    "orders-prod": {
+      "account_id": "222222222203",
+      "region": "ap-northeast-2",
+      "vpc_cidr": "10.22.0.0/20",
+      "availability_zones": [
+        "ap-northeast-2a",
+        "ap-northeast-2c"
+      ],
+      "environment": "prod",
+      "network_owner": "02_ORDERS"
+    }
+  },
+  "services": {
+    "01_PAYMENTS": {
+      "domain": "payments",
+      "targets": {
+        "dev": "payments-dev",
+        "stg": "payments-stg",
+        "prod": "payments-prod"
+      }
+    },
+    "02_ORDERS": {
+      "domain": "orders",
+      "targets": {
+        "dev": "orders-dev",
+        "stg": "orders-stg",
+        "prod": "orders-prod"
+      }
+    },
+    "03_SETTLEMENT": {
+      "domain": "payments",
+      "targets": {
+        "dev": "payments-dev",
+        "stg": "payments-stg",
+        "prod": "payments-prod"
+      }
+    }
+  }
+}

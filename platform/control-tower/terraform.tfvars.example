@@ -1,0 +1,12 @@
+# Control Tower 관리 계정과 홈 리전으로 교체합니다.
+admin_account_id = "000000000000"
+region           = "ap-northeast-2"
+controls         = {}
+
+# AWS-GR_ENCRYPTED_VOLUMES 탐지 제어의 파일럿 예시
+# controls = {
+#   encrypted_volumes = {
+#     control_arn = "arn:aws:controlcatalog:::control/503uicglhjkokaajywfpt6ros"
+#     ou_arns     = ["arn:aws:organizations::000000000000:ou/o-example1234/ou-abcd-12345678"]
+#   }
+# }

@@ -1,0 +1,6 @@
+admin_account_id = "000000000000"
+region           = "ap-northeast-2"
+
+# 빈 값은 정책 정의만 생성합니다. 파일럿 OU 검증 후 대상 OU를 추가합니다.
+target_ou_ids = []
+# target_ou_ids = ["ou-abcd-12345678"]

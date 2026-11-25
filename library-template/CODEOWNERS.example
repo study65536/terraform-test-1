@@ -1,0 +1,7 @@
+# Substitute teams with repository write access and rename this file to .github/CODEOWNERS.
+*                                @ORG/cloud-platform
+/modules/                        @ORG/terraform-maintainers
+/stacks/                         @ORG/terraform-maintainers
+/.github/                        @ORG/cloud-platform
+/.github/workflows/              @ORG/automation-maintainers
+/.github/CODEOWNERS              @ORG/cloud-platform

@@ -1,0 +1,52 @@
+terraform {
+  required_version = ">= 1.10, < 2.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.100"
+    }
+  }
+
+  backend "s3" {
+    key          = "services/@SERVICE@/@ENVIRONMENT@/terraform.tfstate"
+    encrypt      = true
+    use_lockfile = true
+  }
+}
+
+locals {
+  environment = "@ENVIRONMENT@"
+  account     = jsondecode(file("${path.root}/account.json"))
+}
+
+provider "aws" {
+  region              = local.account.region
+  allowed_account_ids = [local.account.account_id]
+
+  default_tags {
+    tags = {
+      ServiceCode = local.account.service_code
+      Environment = local.environment
+      Owner       = local.account.owner
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
+module "workload" {
+  source = "@MODULE_SOURCE@"
+
+  service_code = local.account.service_code
+  account_id   = local.account.account_id
+  region       = local.account.region
+  environment  = local.environment
+  workload = merge(jsondecode(file("${path.root}/workload.json")), {
+    vpc_cidr                  = local.account.vpc_cidr
+    availability_zones        = local.account.availability_zones
+    shared_network_owner_code = local.account.network_owner_code == local.account.service_code ? null : local.account.network_owner_code
+  })
+}
+
+output "workload" {
+  value = module.workload.resources
+}

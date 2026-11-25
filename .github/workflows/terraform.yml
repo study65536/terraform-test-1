@@ -1,0 +1,38 @@
+name: Starter kit checks
+on: [push, pull_request]
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - run: python3 scripts/catalog.py
+      - run: python3 scripts/test-service-factory.py
+      - run: python3 -m unittest discover -s service-template/tests
+      - run: python3 library-template/tests/test-release.py
+      - run: terraform fmt -check -recursive
+      - name: Validate governance roots, shared stack and every reusable module
+        shell: bash
+        run: |
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/providers"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          for directory in platform/{control-tower,scp,iam} stacks/workload modules/terraform-aws-*; do
+            if [[ ! -f "$directory/.terraform.lock.hcl" ]]; then
+              cp service-template/.terraform.lock.hcl "$directory/.terraform.lock.hcl"
+            fi
+            terraform -chdir="$directory" init -input=false -backend=false -lockfile=readonly
+            terraform -chdir="$directory" validate
+          done
+      - run: terraform -chdir=stacks/workload test
+      - name: Verify three independent repository boundaries
+        run: |
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/providers"
+          bash tests/repository-boundaries.sh

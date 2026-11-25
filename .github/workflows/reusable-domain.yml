@@ -1,0 +1,108 @@
+name: Validate changed Terraform roots
+on:
+  workflow_call:
+    inputs:
+      module_repo:
+        description: Full HTTPS GitHub module repository URL ending in .git
+        required: true
+        type: string
+    secrets:
+      module_read_token:
+        description: Read-only credential when the module repository is private
+        required: false
+permissions:
+  contents: read
+
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.roots.outputs.matrix }}
+      has_roots: ${{ steps.roots.outputs.has_roots }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select affected service environments
+        id: roots
+        shell: python
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
+        run: |
+          import json, os, subprocess, sys
+          matrix = subprocess.check_output([
+              sys.executable, "scripts/select-roots.py", "--base", os.environ["BASE"], "--matrix"
+          ], text=True).strip()
+          batches = json.loads(matrix)["include"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print(f"matrix={matrix}", file=output)
+              print("has_roots=" + str(bool(batches)).lower(), file=output)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              for batch in batches:
+                  for root in json.loads(batch["roots"]):
+                      print(f"- `{root}`", file=summary)
+
+  validate:
+    needs: select
+    if: needs.select.outputs.has_roots == 'true'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    name: Validate batch ${{ matrix.batch }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - name: Validate Terraform configuration in each selected root
+        env:
+          ROOTS: ${{ matrix.roots }}
+          MODULE_REPO: ${{ inputs.module_repo }}
+          MODULE_READ_TOKEN: ${{ secrets.module_read_token }}
+        shell: bash
+        run: |
+          [[ "$MODULE_REPO" =~ ^https://github\.com/[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+\.git$ ]]
+          if [[ -n "$MODULE_READ_TOKEN" ]]; then
+            export GIT_CONFIG_COUNT=1
+            export GIT_CONFIG_KEY_0="http.$MODULE_REPO.extraHeader"
+            basic=$(printf 'x-access-token:%s' "$MODULE_READ_TOKEN" | base64 -w0)
+            echo "::add-mask::$basic"
+            export GIT_CONFIG_VALUE_0="Authorization: Basic $basic"
+          fi
+          unset MODULE_READ_TOKEN
+          export TF_PLUGIN_CACHE_DIR="$RUNNER_TEMP/providers"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          mapfile -t dirs < <(jq -r '.[]' <<< "$ROOTS")
+          for directory in "${dirs[@]}"; do
+            [[ "$directory" =~ ^services/[0-9]{2,}_[A-Z][A-Z0-9_]*/(dev|stg|prod)$ ]]
+            echo "::group::$directory"
+            terraform -chdir="$directory" fmt -check -recursive
+            terraform -chdir="$directory" init -backend=false -lockfile=readonly -input=false
+            terraform -chdir="$directory" validate
+            echo "::endgroup::"
+          done
+
+  result:
+    name: Domain Terraform result
+    if: always()
+    needs: [select, validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report a stable check for repository rulesets
+        env:
+          SELECT_RESULT: ${{ needs.select.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          HAS_ROOTS: ${{ needs.select.outputs.has_roots }}
+        run: |
+          [[ "$SELECT_RESULT" == "success" ]]
+          if [[ "$HAS_ROOTS" == "true" ]]; then
+            [[ "$VALIDATE_RESULT" == "success" ]]
+          else
+            [[ "$VALIDATE_RESULT" == "skipped" ]]
+          fi
